@@ -11,7 +11,7 @@ export default function LoginForm({ loginType, onLogin, onBack }) {
       loginType: loginType.id,
       username: username.trim(),
       password: password.trim()
-    });
+    }); 
   };
 
   return (

@@ -1,26 +1,39 @@
 // screens/HomeScreen.js
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Image } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Alert,
+  Image,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
 
 export default function HomeScreen({ navigation, userData, onLogout }) {
-  const [priority, setPriority] = useState('');
-  const [description, setDescription] = useState('');
-  const [contact, setContact] = useState('');
+  const [priority, setPriority] = useState("");
+  const [description, setDescription] = useState("");
+  const [contact, setContact] = useState("");
   const [photos, setPhotos] = useState([]);
 
   const priorityLevels = [
-    { id: 'low', label: 'Low', subtitle: 'Minor issue' },
-    { id: 'medium', label: 'Medium', subtitle: 'Moderate concern' },
-    { id: 'high', label: 'High', subtitle: 'Safety hazard' }
+    { id: "low", label: "Low", subtitle: "Minor issue" },
+    { id: "medium", label: "Medium", subtitle: "Moderate concern" },
+    { id: "high", label: "High", subtitle: "Safety hazard" },
   ];
 
   const requestPermission = async () => {
     const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      const { status: newStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (newStatus !== 'granted') {
-        Alert.alert('Permission required', 'Sorry, we need camera roll permissions to make this work!');
+    if (status !== "granted") {
+      const { status: newStatus } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (newStatus !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "Sorry, we need camera roll permissions to make this work!"
+        );
         return false;
       }
     }
@@ -29,7 +42,7 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
 
   const pickImage = async () => {
     if (photos.length >= 3) {
-      Alert.alert('Limit Reached', 'You can upload maximum 3 photos');
+      Alert.alert("Limit Reached", "You can upload maximum 3 photos");
       return;
     }
 
@@ -53,16 +66,16 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
   };
 
   const removePhoto = (photoId) => {
-    setPhotos(photos.filter(photo => photo.id !== photoId));
+    setPhotos(photos.filter((photo) => photo.id !== photoId));
   };
 
   const handleSubmitReport = () => {
     if (!priority) {
-      Alert.alert('Error', 'Please select a priority level');
+      Alert.alert("Error", "Please select a priority level");
       return;
     }
     if (!description.trim()) {
-      Alert.alert('Error', 'Please describe the issue');
+      Alert.alert("Error", "Please describe the issue");
       return;
     }
 
@@ -70,21 +83,70 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
       priority,
       description,
       contact,
-      photos: photos.map(photo => photo.uri),
+      photos: photos.map((photo) => photo.uri),
       timestamp: new Date().toISOString(),
-      userType: userData?.loginType || 'anonymous'
+      userType: userData?.loginType || "anonymous",
     };
 
-    console.log('Report submitted:', reportData);
-    Alert.alert('Success', 'Report submitted successfully!');
-    
-    // Reset form
-    setPriority('');
-    setDescription('');
-    setContact('');
-    setPhotos([]);
+    console.log("Report submitted:", reportData);
+    Alert.alert("Success", "Report submitted successfully!");
+    uploadReport(reportData);
   };
+  
+  async function uploadReport(reportData) {
+    try {
 
+      token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGQ1MjJhODcwOGRkYmU5N2Q5OTE1ZjIiLCJyb2xlIjoiY2l0aXplbiIsImlhdCI6MTc1ODc5ODUwNCwiZXhwIjoxNzU5NDAzMzA0fQ.GMEu_UHtHjsp7CQEeYWhxVvIVbZ-rKDmI49GOatLuu4"
+
+      const response = await fetch(
+          "https://noor-samsung.onrender.com/api/complaints/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,  // attach token here
+ 
+          },
+          body: JSON.stringify({ email: username, password }),
+        }
+      );
+
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+
+      // Handle non-200 responses
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Server error response:", errorData);
+        alert(errorData.message || `Server error: ${response.status}`);
+        return;
+      }
+
+      const data = await response.json();
+      console.log("Response data:", data);
+
+      if (data.success) {
+        setIsLoggedIn(true);
+        setUserData(data.user);
+      } else {
+        alert(
+          data.message ||
+            "Authentication failed. Please check your credentials."
+        );
+      }
+    } catch (error) {
+      console.error("Network error during authentication:", error);
+      alert("Cannot connect to server. Please check your internet connection.");
+    }
+  }
+
+  function formReset() {
+    // Reset form
+    setPriority("");
+    setDescription("");
+    setContact("");
+    setPhotos([]);
+  }
   return (
     <View style={styles.container}>
       {/* Fixed Header - Doesn't Scroll */}
@@ -93,7 +155,9 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
           <Text style={styles.headerTitle}>RoadWatch</Text>
           {userData && (
             <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-              <Text style={styles.logoutText}>Logout ({userData.username})</Text>
+              <Text style={styles.logoutText}>
+                Logout ({userData.username})
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -101,27 +165,35 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
       </View>
 
       {/* Scrollable Content Below Header */}
-      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+      <ScrollView
+        style={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* User Dashboard Section - Only show if user is logged in */}
         {userData && (
           <View style={styles.dashboardSection}>
             <Text style={styles.sectionTitle}>My Dashboard</Text>
             <View style={styles.dashboardButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.dashboardButton}
-                onPress={() => navigation.navigate('UserDatabase')}
+                onPress={() => navigation.navigate("UserDatabase")}
               >
                 <Text style={styles.dashboardButtonText}>📊 My Reports</Text>
-                <Text style={styles.dashboardButtonSubtext}>View and track your submitted reports</Text>
+                <Text style={styles.dashboardButtonSubtext}>
+                  View and track your submitted reports
+                </Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.dashboardButton}
-                onPress={() => navigation.navigate('Database')}
+                onPress={() => navigation.navigate("Database")}
               >
-                <Text style={styles.dashboardButtonText}>👥 Community Reports</Text>
-                <Text style={styles.dashboardButtonSubtext}>See what others have reported</Text>
+                <Text style={styles.dashboardButtonText}>
+                  👥 Community Reports
+                </Text>
+                <Text style={styles.dashboardButtonSubtext}>
+                  See what others have reported
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -136,14 +208,16 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
                 key={level.id}
                 style={[
                   styles.priorityButton,
-                  priority === level.id && styles.priorityButtonSelected
+                  priority === level.id && styles.priorityButtonSelected,
                 ]}
                 onPress={() => setPriority(level.id)}
               >
-                <Text style={[
-                  styles.priorityLabel,
-                  priority === level.id && styles.priorityLabelSelected
-                ]}>
+                <Text
+                  style={[
+                    styles.priorityLabel,
+                    priority === level.id && styles.priorityLabelSelected,
+                  ]}
+                >
                   {level.label}
                 </Text>
                 <Text style={styles.prioritySubtitle}>{level.subtitle}</Text>
@@ -155,7 +229,9 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
         {/* Description Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Description</Text>
-          <Text style={styles.sectionSubtitle}>Describe the issue in detail...</Text>
+          <Text style={styles.sectionSubtitle}>
+            Describe the issue in detail...
+          </Text>
           <TextInput
             style={styles.descriptionInput}
             multiline
@@ -174,7 +250,8 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
               Please log in to view recent reports and track their progress.
             </Text>
             <Text style={styles.infoSubtext}>
-              Citizen Login: You can still submit reports anonymously using the form above.
+              Citizen Login: You can still submit reports anonymously using the
+              form above.
             </Text>
           </View>
         )}
@@ -184,19 +261,26 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
           <Text style={styles.sectionTitle}>Upload Photos (Optional)</Text>
           <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
             <Text style={styles.photoButtonText}>Click to upload photos</Text>
-            <Text style={styles.photoSubtext}>PNG, JPG up to 5MB each (max 3 photos)</Text>
+            <Text style={styles.photoSubtext}>
+              PNG, JPG up to 5MB each (max 3 photos)
+            </Text>
           </TouchableOpacity>
-          
+
           {/* Selected Photos Preview */}
           {photos.length > 0 && (
             <View style={styles.photosContainer}>
-              <Text style={styles.photosTitle}>Selected Photos ({photos.length}/3):</Text>
+              <Text style={styles.photosTitle}>
+                Selected Photos ({photos.length}/3):
+              </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.photosList}>
                   {photos.map((photo) => (
                     <View key={photo.id} style={styles.photoItem}>
-                      <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
-                      <TouchableOpacity 
+                      <Image
+                        source={{ uri: photo.uri }}
+                        style={styles.photoPreview}
+                      />
+                      <TouchableOpacity
                         style={styles.removePhotoButton}
                         onPress={() => removePhoto(photo.id)}
                       >
@@ -223,7 +307,10 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
         </View>
 
         {/* Submit Button */}
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmitReport}>
+        <TouchableOpacity
+          style={styles.submitButton}
+          onPress={handleSubmitReport}
+        >
           <Text style={styles.submitButtonText}>Submit Report</Text>
         </TouchableOpacity>
 
@@ -237,41 +324,41 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   header: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: "#1a73e8",
     padding: 20,
     paddingTop: 50,
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     zIndex: 1000,
   },
   headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 5,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontWeight: "bold",
+    color: "#ffffff",
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#e8f0fe',
+    color: "#e8f0fe",
   },
   logoutButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 20,
   },
   logoutText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 14,
   },
   scrollContent: {
@@ -280,12 +367,12 @@ const styles = StyleSheet.create({
   },
   // New Dashboard Styles
   dashboardSection: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     margin: 10,
     padding: 15,
     borderRadius: 8,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -294,48 +381,48 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   dashboardButton: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     padding: 15,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
   },
   dashboardButtonText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1a73e8',
+    fontWeight: "bold",
+    color: "#1a73e8",
     marginBottom: 5,
   },
   dashboardButtonSubtext: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   // Existing styles remain the same
   section: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     margin: 10,
     padding: 15,
     borderRadius: 8,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 5,
-    color: '#333',
+    color: "#333",
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 10,
   },
   priorityContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   priorityButton: {
     flex: 1,
@@ -343,77 +430,77 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#ddd',
-    alignItems: 'center',
+    borderColor: "#ddd",
+    alignItems: "center",
   },
   priorityButtonSelected: {
-    borderColor: '#1a73e8',
-    backgroundColor: '#e8f0fe',
+    borderColor: "#1a73e8",
+    backgroundColor: "#e8f0fe",
   },
   priorityLabel: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#666',
+    fontWeight: "bold",
+    color: "#666",
   },
   priorityLabelSelected: {
-    color: '#1a73e8',
+    color: "#1a73e8",
   },
   prioritySubtitle: {
     fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
+    color: "#999",
+    textAlign: "center",
     marginTop: 5,
   },
   descriptionInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     minHeight: 100,
   },
   infoSection: {
-    backgroundColor: '#fff3cd',
+    backgroundColor: "#fff3cd",
     margin: 10,
     padding: 15,
     borderRadius: 8,
     borderLeftWidth: 4,
-    borderLeftColor: '#ffc107',
+    borderLeftColor: "#ffc107",
   },
   infoTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#856404',
+    fontWeight: "bold",
+    color: "#856404",
     marginBottom: 5,
   },
   infoText: {
     fontSize: 14,
-    color: '#856404',
+    color: "#856404",
     marginBottom: 5,
   },
   infoSubtext: {
     fontSize: 12,
-    color: '#856404',
-    fontStyle: 'italic',
+    color: "#856404",
+    fontStyle: "italic",
   },
   photoButton: {
     borderWidth: 2,
-    borderColor: '#1a73e8',
-    borderStyle: 'dashed',
+    borderColor: "#1a73e8",
+    borderStyle: "dashed",
     borderRadius: 8,
     padding: 20,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 10,
   },
   photoButtonText: {
     fontSize: 16,
-    color: '#1a73e8',
-    fontWeight: 'bold',
+    color: "#1a73e8",
+    fontWeight: "bold",
   },
   photoSubtext: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginTop: 5,
   },
   photosContainer: {
@@ -421,15 +508,15 @@ const styles = StyleSheet.create({
   },
   photosTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
-    color: '#333',
+    color: "#333",
   },
   photosList: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   photoItem: {
-    position: 'relative',
+    position: "relative",
     marginRight: 10,
   },
   photoPreview: {
@@ -438,39 +525,39 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   removePhotoButton: {
-    position: 'absolute',
+    position: "absolute",
     top: -5,
     right: -5,
-    backgroundColor: '#ff3b30',
+    backgroundColor: "#ff3b30",
     width: 20,
     height: 20,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   removePhotoText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   contactInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
   },
   submitButton: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: "#1a73e8",
     margin: 10,
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   submitButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   footer: {
     height: 20,

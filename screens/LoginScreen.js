@@ -26,11 +26,11 @@ export default function LoginScreen({ onLogin }) {
       const userData = {
         loginType: credentials.loginType,
         username: credentials.username,
+        password: credentials.password,
         timestamp: new Date().toISOString()
       };
       
       onLogin(userData);
-      Alert.alert('Success', `Welcome ${credentials.username}!`);
     } else {
       Alert.alert('Error', 'Please enter valid credentials');
     }
