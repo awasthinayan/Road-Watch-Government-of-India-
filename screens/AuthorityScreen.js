@@ -1,4 +1,3 @@
-// screens/AuthorityScreen.js
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -7,9 +6,8 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
-  Modal,
-  TextInput,
   StatusBar,
+  Image,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,9 +17,6 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
   const [pendingReports, setPendingReports] = useState([]);
   const [approvedReports, setApprovedReports] = useState([]);
   const [rejectedReports, setRejectedReports] = useState([]);
-  const [selectedReport, setSelectedReport] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
   const [activeTab, setActiveTab] = useState("pending");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -33,7 +28,7 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
       if (!token) return;
 
       const response = await fetch(
-        "https://noor-samsung.onrender.com/api/complaints/all-complaints",
+        "https://noor-samsung.onrender.com/api/complaints",
         {
           method: "GET",
           headers: {
@@ -47,7 +42,6 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
       if (response.ok && data.data && data.data.complaints) {
         const reports = data.data.complaints;
 
-        // Categorize reports based on isLegitimate status
         const pending = reports.filter(
           (report) => report.isLegitimate === null
         );
@@ -75,7 +69,7 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await fetch(
-        `https://noor-samsung.onrender.com/api/complaints/${reportId}/verify`,
+        `https://noor-samsung.onrender.com/api/complaints/${reportId}/status`,
         {
           method: "PATCH",
           headers: {
@@ -84,7 +78,6 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
           },
           body: JSON.stringify({
             isLegitimate: true,
-            rejectionReason: null,
           }),
         }
       );
@@ -102,11 +95,11 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
   };
 
   // Reject a report
-  const rejectReport = async (reportId, reason) => {
+  const rejectReport = async (reportId) => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await fetch(
-        `https://noor-samsung.onrender.com/api/complaints/${reportId}/verify`,
+        `https://noor-samsung.onrender.com/api/complaints/${reportId}/status`,
         {
           method: "PATCH",
           headers: {
@@ -115,16 +108,12 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
           },
           body: JSON.stringify({
             isLegitimate: false,
-            rejectionReason: reason,
           }),
         }
       );
 
       if (response.ok) {
         Alert.alert("Success", "Report rejected successfully");
-        setModalVisible(false);
-        setRejectionReason("");
-        setSelectedReport(null);
         fetchReports();
       } else {
         Alert.alert("Error", "Failed to reject report");
@@ -133,11 +122,6 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
       console.error("Error rejecting report:", error);
       Alert.alert("Error", "Failed to reject report");
     }
-  };
-
-  const handleReject = (report) => {
-    setSelectedReport(report);
-    setModalVisible(true);
   };
 
   const getStatusText = (isLegitimate) => {
@@ -230,9 +214,53 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
         </View>
       </View>
 
+      {/* Image Display */}
+      {report.imageUrl ? (
+        <Image
+          source={{ uri: report.imageUrl }}
+          style={styles.reportImage}
+          resizeMode="cover"
+        />
+      ) : null}
+
       <Text style={styles.reportDescription}>
         {report.caption || "No description provided"}
       </Text>
+
+      {/* Location Info */}
+      <View style={styles.detailRow}>
+        <Ionicons name="location" size={14} color="#6B7280" />
+        <Text style={styles.detailLabel}>Road:</Text>
+        <Text style={styles.detailValue}>
+          {report.location?.roadName || "N/A"}
+        </Text>
+      </View>
+      <View style={styles.detailRow}>
+        <Ionicons name="navigate" size={14} color="#6B7280" />
+        <Text style={styles.detailLabel}>Landmark:</Text>
+        <Text style={styles.detailValue}>
+          {report.location?.landmark || "N/A"}
+        </Text>
+      </View>
+      <View style={styles.detailRow}>
+        <Ionicons name="flag" size={14} color="#6B7280" />
+        <Text style={styles.detailLabel}>Zip Code:</Text>
+        <Text style={styles.detailValue}>
+          {report.location?.zipCode || "N/A"}
+        </Text>
+      </View>
+
+      {/* User Info */}
+      <View style={styles.detailRow}>
+        <Ionicons name="person" size={14} color="#6B7280" />
+        <Text style={styles.detailLabel}>Reporter:</Text>
+        <Text style={styles.detailValue}>{report.userId?.name || "N/A"}</Text>
+      </View>
+      <View style={styles.detailRow}>
+        <Ionicons name="mail" size={14} color="#6B7280" />
+        <Text style={styles.detailLabel}>Email:</Text>
+        <Text style={styles.detailValue}>{report.userId?.email || "N/A"}</Text>
+      </View>
 
       <View style={styles.detailsContainer}>
         <View style={styles.detailRow}>
@@ -240,16 +268,6 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
           <Text style={styles.detailLabel}>Submitted:</Text>
           <Text style={styles.detailValue}>{formatDate(report.createdAt)}</Text>
         </View>
-
-        {report.rejectionReason && (
-          <View style={styles.detailRow}>
-            <Ionicons name="alert-circle" size={12} color="#EF4444" />
-            <Text style={styles.detailLabel}>Rejection Reason:</Text>
-            <Text style={[styles.detailValue, { color: "#EF4444" }]}>
-              {report.rejectionReason}
-            </Text>
-          </View>
-        )}
       </View>
 
       {showActions && (
@@ -264,7 +282,7 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
 
           <TouchableOpacity
             style={[styles.actionButton, styles.rejectButton]}
-            onPress={() => handleReject(report)}
+            onPress={() => rejectReport(report._id)}
           >
             <Ionicons name="close" size={16} color="#FFFFFF" />
             <Text style={styles.rejectButtonText}>Reject</Text>
@@ -415,6 +433,7 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
       {/* Reports List */}
       <ScrollView
         style={styles.scrollContent}
+        contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -459,81 +478,34 @@ export default function AuthorityScreen({ navigation, userData, onLogout }) {
           )}
         </View>
       </ScrollView>
-
-      {/* Rejection Reason Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => {
-          setModalVisible(false);
-          setRejectionReason("");
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reject Report</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setModalVisible(false);
-                  setRejectionReason("");
-                }}
-              >
-                <Ionicons name="close" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSubtitle}>
-              Please provide a reason for rejecting this report:
-            </Text>
-
-            <TextInput
-              style={styles.reasonInput}
-              multiline
-              numberOfLines={4}
-              placeholder="Enter rejection reason..."
-              placeholderTextColor="#9CA3AF"
-              value={rejectionReason}
-              onChangeText={setRejectionReason}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => {
-                  setModalVisible(false);
-                  setRejectionReason("");
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  styles.confirmRejectButton,
-                  !rejectionReason.trim() && styles.disabledButton,
-                ]}
-                onPress={() =>
-                  rejectReport(selectedReport?._id, rejectionReason)
-                }
-                disabled={!rejectionReason.trim()}
-              >
-                <Ionicons name="close-circle" size={18} color="#FFFFFF" />
-                <Text style={styles.confirmRejectButtonText}>
-                  Reject Report
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  reportImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#374151",
+    minWidth: 90,
+  },
+  detailValue: {
+    fontSize: 12,
+    color: "#6B7280",
+    flexShrink: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: "#F9FAFB",
