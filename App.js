@@ -1,9 +1,10 @@
 // App.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { View, Text } from 'react-native';
 
 // Import screens
 import HomeScreen from "./screens/HomeScreen";
@@ -17,9 +18,33 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  const auth = async (username, password, url) => {
+  // Check if user is already logged in on app start
+  useEffect(() => {
+    checkExistingAuth();
+  }, []);
+
+  const checkExistingAuth = async () => {
     try {
+      const token = await AsyncStorage.getItem("token");
+      const savedUserData = await AsyncStorage.getItem("userData");
+      
+      if (token && savedUserData) {
+        setUserData(JSON.parse(savedUserData));
+        setIsLoggedIn(true);
+      }
+    } catch (error) {
+      console.error("Error checking existing auth:", error);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
+
+  const auth = async (username, password, url, loginType) => {
+    try {
+      console.log("Attempting login for:", loginType);
+      
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -28,8 +53,8 @@ export default function App() {
         body: JSON.stringify({ email: username, password }),
       });
 
-      const data = await response.json(); // ✅ parse once
-      console.log("Response status:", response.status, "Data:", data);
+      const data = await response.json();
+      console.log("Login response:", data);
 
       if (!response.ok || !data.success) {
         alert(data.message || `Login failed: ${response.status}`);
@@ -37,17 +62,26 @@ export default function App() {
       }
 
       if (data.token) {
-        try {
-          await AsyncStorage.setItem("token", data.token); // ✅ store token
-        } catch (e) {
-          console.error("Error saving token:", e);
-        }
+        // Store token and user data
+        await AsyncStorage.setItem("token", data.token);
+        await AsyncStorage.setItem("userData", JSON.stringify({
+          ...data.user,
+          loginType: loginType
+        }));
 
+        // Update state
         setIsLoggedIn(true);
-        setUserData(data.user);
-      }
+        setUserData({
+          ...data.user,
+          loginType: loginType
+        });
 
-      return { success: true, user: data.user };
+        console.log("Login successful, user type:", loginType);
+        return { success: true, user: data.user };
+      } else {
+        alert("No token received from server");
+        return { success: false };
+      }
     } catch (error) {
       console.error("Network error during authentication:", error);
       alert("Cannot connect to server. Please check your internet connection.");
@@ -56,22 +90,32 @@ export default function App() {
   };
 
   const authenticateHandler = async (loginType, username, password) => {
-    if (loginType === "citizen")
-      auth(
-        username,
-        password,
-        "https://noor-samsung.onrender.com/api/auth/citizen/login"
-      );
-    if (loginType === "admin")
-      auth(
-        username,
-        password,
-        "https://noor-samsung.onrender.com/api/auth/admin/login"
-      );
+    console.log("Authenticating:", loginType, username);
+    
+    let url;
+    if (loginType === "citizen") {
+      url = "https://noor-samsung.onrender.com/api/auth/citizen/login";
+    } else if (loginType === "authority") {
+      url = "https://noor-samsung.onrender.com/api/auth/admin/login";
+    } else {
+      alert("Invalid login type");
+      return;
+    }
+
+    const result = await auth(username, password, url, loginType);
+    
+    if (!result.success) {
+      console.log("Authentication failed");
+      // Reset states on failure
+      setIsLoggedIn(false);
+      setUserData(null);
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("userData");
+    }
   };
 
   const handleLogin = (userData) => {
-    setUserData(userData);
+    console.log("Handle login called with:", userData);
     authenticateHandler(
       userData.loginType,
       userData.username,
@@ -79,10 +123,33 @@ export default function App() {
     );
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("userData");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+    
     setUserData(null);
     setIsLoggedIn(false);
   };
+
+  // Show loading screen while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <NavigationContainer>
+        <StatusBar barStyle="dark-content" />
+        <Stack.Navigator>
+          <Stack.Screen 
+            name="Loading" 
+            component={LoadingScreen} 
+            options={{ headerShown: false }} 
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
+  }
 
   return (
     <NavigationContainer>
@@ -156,3 +223,14 @@ export default function App() {
     </NavigationContainer>
   );
 }
+
+// Simple loading screen component
+function LoadingScreen() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a73e8' }}>
+      <Text style={{ color: 'white', fontSize: 18 }}>Loading...</Text>
+    </View>
+  );
+}
+
+// Add these imports at the top if not already present
