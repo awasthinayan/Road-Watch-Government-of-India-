@@ -1,48 +1,88 @@
 // screens/UserDatabaseScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function UserDatabaseScreen({ userData }) {
   const [userReports, setUserReports] = useState([]);
   const [filterStatus, setFilterStatus] = useState('all');
+  
+  const getData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Error', 'User not logged in');
+        return;
+      }
 
-  // Mock user-specific reports data
-  const mockUserReports = [
-    {
-      id: '1',
-      title: 'Pothole near my house',
-      description: 'Large pothole causing vehicle damage every day',
-      priority: 'high',
-      status: 'pending',
-      date: '2024-01-15',
-      location: 'Near Central Park',
-      submittedBy: userData?.username || 'You'
-    },
-    {
-      id: '2',
-      title: 'Broken sidewalk',
-      description: 'Sidewalk tiles broken, dangerous for pedestrians',
-      priority: 'medium',
-      status: 'in-progress',
-      date: '2024-01-12',
-      location: 'Main Street',
-      submittedBy: userData?.username || 'You'
-    },
-    {
-      id: '3',
-      title: 'Street light outage',
-      description: 'Light not working for past week',
-      priority: 'high',
-      status: 'completed',
-      date: '2024-01-05',
-      location: 'Oak Avenue',
-      submittedBy: userData?.username || 'You'
+      const response = await fetch(
+        'https://noor-samsung.onrender.com/api/complaints/my-complaints',
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+      console.log('Fetched user reports:', data.data.complaints);
+      
+      if (response.ok && data.data.complaints) {
+        // Transform API data to match UI expectations
+        const transformedReports = data.data.complaints.map(report => ({
+          id: report._id,
+          title: report.caption || 'No Title',
+          description: report.caption || 'No description provided',
+          priority: getPriorityFromReport(report),
+          status: getStatusFromReport(report),
+          date: formatDate(report.createdAt),
+          location: report.location ? 
+            `${report.location.roadName}, ${report.location.landmark} - ${report.location.zipCode}` 
+            : 'Location not specified',
+          submittedBy: userData?.username || 'You',
+          imageUrl: report.imageUrl
+        }));
+        
+        setUserReports(transformedReports);
+      } else {
+        Alert.alert('Error', data.message || 'Failed to fetch reports');
+        setUserReports([]);
+      }
+
+    } catch (error) {
+      console.error('Network or storage error:', error);
+      Alert.alert('Error', 'Cannot connect to server. Check your internet.');
+      setUserReports([]);
     }
-  ];
+  };
+
+  // Helper functions to transform API data
+  const getPriorityFromReport = (report) => {
+    // You can modify this logic based on your business rules
+    if (report.priority) return report.priority;
+    return 'medium'; // default priority
+  };
+
+  const getStatusFromReport = (report) => {
+    if (report.isLegitimate === true) return 'completed';
+    if (report.isLegitimate === false) return 'pending';
+    if (report.isLegitimate === null) return 'in-progress';
+    return 'pending'; // default status
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown date';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   useEffect(() => {
-    // Simulate API call to fetch user's reports
-    setUserReports(mockUserReports);
+    getData();
   }, []);
 
   const filteredReports = filterStatus === 'all' 
@@ -70,8 +110,8 @@ export default function UserDatabaseScreen({ userData }) {
   const getStatusText = (status) => {
     switch (status) {
       case 'pending': return 'Under Review';
-      case 'in-progress': return 'Work in Progress';
-      case 'completed': return 'Issue Resolved';
+      case 'in-progress': return 'Verification in Progress';
+      case 'completed': return 'Verified & Completed';
       default: return status;
     }
   };
@@ -114,6 +154,15 @@ export default function UserDatabaseScreen({ userData }) {
         {filteredReports.length > 0 ? (
           filteredReports.map(report => (
             <View key={report.id} style={styles.reportCard}>
+              {/* Report Image */}
+              {report.imageUrl && (
+                <Image 
+                  source={{ uri: report.imageUrl }} 
+                  style={styles.reportImage}
+                  resizeMode="cover"
+                />
+              )}
+              
               <View style={styles.reportHeader}>
                 <Text style={styles.reportTitle}>{report.title}</Text>
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(report.status) }]}>
@@ -143,24 +192,24 @@ export default function UserDatabaseScreen({ userData }) {
                 
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Report ID:</Text>
-                  <Text style={styles.detailValue}>#{report.id}</Text>
+                  <Text style={styles.detailValue}>#{report.id.substring(0, 8)}...</Text>
                 </View>
               </View>
 
               {/* Status Message */}
               {report.status === 'pending' && (
                 <Text style={styles.statusMessage}>
-                  ⏳ Your report is under review by authorities
+                  ⏳ Your report is under initial review
                 </Text>
               )}
               {report.status === 'in-progress' && (
                 <Text style={styles.statusMessage}>
-                  🔧 Authorities are working on resolving this issue
+                  🔧 Authorities are verifying the report
                 </Text>
               )}
               {report.status === 'completed' && (
                 <Text style={styles.statusMessage}>
-                  ✅ This issue has been resolved successfully
+                  ✅ Report verified and marked as legitimate
                 </Text>
               )}
             </View>
@@ -239,6 +288,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+  reportImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 6,
+    marginBottom: 10,
   },
   reportHeader: {
     flexDirection: 'row',

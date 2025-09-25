@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Import screens
 import HomeScreen from "./screens/HomeScreen";
@@ -17,55 +18,65 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
 
-  const auth = async(username, password, url)=>{
+  const auth = async (username, password, url) => {
     try {
-      const response = await fetch(
-          url,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email: username, password }),
-        }
-      );
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: username, password }),
+      });
 
-      console.log("Response status:", response.status);
-      console.log("Response ok:", response.ok);
+      const data = await response.json(); // ✅ parse once
+      console.log("Response status:", response.status, "Data:", data);
 
-      // Handle non-200 responses
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Server error response:", errorData);
-        alert(errorData.message || `Server error: ${response.status}`);
-        return;
+      if (!response.ok || !data.success) {
+        alert(data.message || `Login failed: ${response.status}`);
+        return { success: false };
       }
 
-      const data = await response.json();
-      console.log("Response data:", data);
+      if (data.token) {
+        try {
+          await AsyncStorage.setItem("token", data.token); // ✅ store token
+        } catch (e) {
+          console.error("Error saving token:", e);
+        }
 
-      if (data.success) {
         setIsLoggedIn(true);
         setUserData(data.user);
-      } else {
-        alert(
-          data.message ||
-            "Authentication failed. Please check your credentials."
-        );
       }
+
+      return { success: true, user: data.user };
     } catch (error) {
       console.error("Network error during authentication:", error);
       alert("Cannot connect to server. Please check your internet connection.");
+      return { success: false };
     }
-  }
+  };
+
   const authenticateHandler = async (loginType, username, password) => {
-    if(loginType==="citizen") auth(username, password,"https://noor-samsung.onrender.com/api/auth/citizen/login");
-    if(loginType==="admin") auth(username, password,"https://noor-samsung.onrender.com/api/auth/admin/login");
+    if (loginType === "citizen")
+      auth(
+        username,
+        password,
+        "https://noor-samsung.onrender.com/api/auth/citizen/login"
+      );
+    if (loginType === "admin")
+      auth(
+        username,
+        password,
+        "https://noor-samsung.onrender.com/api/auth/admin/login"
+      );
   };
 
   const handleLogin = (userData) => {
     setUserData(userData);
-    authenticateHandler(userData.loginType, userData.username, userData.password);
+    authenticateHandler(
+      userData.loginType,
+      userData.username,
+      userData.password
+    );
   };
 
   const handleLogout = () => {
