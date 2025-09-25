@@ -4,8 +4,9 @@ import { View, Text, StyleSheet, Image, Alert } from 'react-native';
 import LoginTypeSelector from '../components/LoginTypeSelector';
 import LoginForm from '../components/LoginForm';
 
-export default function LoginScreen({ onLogin }) { // Removed navigation prop
+export default function LoginScreen({ onLogin }) {
   const [selectedLoginType, setSelectedLoginType] = useState(null);
+  const [imageError, setImageError] = useState(false);
 
   const loginTypes = [
     { id: 'citizen', title: 'Citizen Login', icon: '👤' },
@@ -28,8 +29,7 @@ export default function LoginScreen({ onLogin }) { // Removed navigation prop
         timestamp: new Date().toISOString()
       };
       
-      // Call the onLogin function passed from App.js
-      onLogin(userData); // This will trigger navigation in App.js
+      onLogin(userData);
       Alert.alert('Success', `Welcome ${credentials.username}!`);
     } else {
       Alert.alert('Error', 'Please enter valid credentials');
@@ -47,10 +47,17 @@ export default function LoginScreen({ onLogin }) { // Removed navigation prop
         <Text style={styles.welcomeTitle}>Welcome to</Text>
         <Text style={styles.appTitle}>RoadWatch</Text>
         <Text style={styles.welcomeSubtitle}>Smart Road Reporting System</Text>
-        <Image 
-          source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Government_of_India_logo.svg/1200px-Government_of_India_logo.svg.png?20220331190844' }} 
-          style={styles.logo}
-        />
+        
+        {!imageError ? (
+          <Image 
+            source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Government_of_India_logo.svg/1200px-Government_of_India_logo.svg.png?20220331190844' }} 
+            style={styles.logo}
+            resizeMode="contain"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <Text style={styles.fallbackEmoji}>🇮🇳</Text>
+        )}
       </View>
 
       {/* Login Section */}
@@ -109,10 +116,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   logo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#ffffff',
+    width: 80,
+    height: 80,
+  },
+  fallbackEmoji: {
+    fontSize: 60,
   },
   loginSection: {
     flex: 2,

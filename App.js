@@ -9,6 +9,7 @@ import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import DatabaseScreen from './screens/DatabaseScreen';
 import AuthorityScreen from './screens/AuthorityScreen';
+import UserDatabaseScreen from './screens/UserDatabaseScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -82,6 +83,23 @@ export default function App() {
           }}
         >
           {props => <DatabaseScreen {...props} userData={userData} />}
+        </Stack.Screen>
+
+        <Stack.Screen 
+          name="UserDatabase" 
+          options={{ 
+            headerShown: true, 
+            title: 'My Reports',
+            headerStyle: {
+              backgroundColor: '#1a73e8',
+            },
+            headerTintColor: '#fff',
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          }}
+        >
+          {props => <UserDatabaseScreen {...props} userData={userData} />}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>

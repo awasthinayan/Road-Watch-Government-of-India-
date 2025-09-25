@@ -15,44 +15,42 @@ export default function HomeScreen({ navigation, userData, onLogout }) {
     { id: 'high', label: 'High', subtitle: 'Safety hazard' }
   ];
 
- const requestPermission = async () => {
-  // For newer versions of expo-image-picker
-  const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
-    const { status: newStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (newStatus !== 'granted') {
-      Alert.alert('Permission required', 'Sorry, we need camera roll permissions to make this work!');
-      return false;
+  const requestPermission = async () => {
+    const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      const { status: newStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (newStatus !== 'granted') {
+        Alert.alert('Permission required', 'Sorry, we need camera roll permissions to make this work!');
+        return false;
+      }
     }
-  }
-  return true;
-};
+    return true;
+  };
 
-  // Replace the pickImage function in your HomeScreen.js
-const pickImage = async () => {
-  if (photos.length >= 3) {
-    Alert.alert('Limit Reached', 'You can upload maximum 3 photos');
-    return;
-  }
+  const pickImage = async () => {
+    if (photos.length >= 3) {
+      Alert.alert('Limit Reached', 'You can upload maximum 3 photos');
+      return;
+    }
 
-  const hasPermission = await requestPermission();
-  if (!hasPermission) return;
+    const hasPermission = await requestPermission();
+    if (!hasPermission) return;
 
-  let result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaType.Images, // Fixed: Use MediaType instead of MediaTypeOptions
-    allowsEditing: true,
-    aspect: [4, 3],
-    quality: 0.8,
-  });
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaType.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
 
-  if (!result.canceled && result.assets && result.assets[0].uri) {
-    const newPhoto = {
-      uri: result.assets[0].uri,
-      id: Date.now().toString(),
-    };
-    setPhotos([...photos, newPhoto]);
-  }
-};
+    if (!result.canceled && result.assets && result.assets[0].uri) {
+      const newPhoto = {
+        uri: result.assets[0].uri,
+        id: Date.now().toString(),
+      };
+      setPhotos([...photos, newPhoto]);
+    }
+  };
 
   const removePhoto = (photoId) => {
     setPhotos(photos.filter(photo => photo.id !== photoId));
@@ -105,6 +103,30 @@ const pickImage = async () => {
       {/* Scrollable Content Below Header */}
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
+        {/* User Dashboard Section - Only show if user is logged in */}
+        {userData && (
+          <View style={styles.dashboardSection}>
+            <Text style={styles.sectionTitle}>My Dashboard</Text>
+            <View style={styles.dashboardButtons}>
+              <TouchableOpacity 
+                style={styles.dashboardButton}
+                onPress={() => navigation.navigate('UserDatabase')}
+              >
+                <Text style={styles.dashboardButtonText}>📊 My Reports</Text>
+                <Text style={styles.dashboardButtonSubtext}>View and track your submitted reports</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.dashboardButton}
+                onPress={() => navigation.navigate('Database')}
+              >
+                <Text style={styles.dashboardButtonText}>👥 Community Reports</Text>
+                <Text style={styles.dashboardButtonSubtext}>See what others have reported</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Priority Level Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Priority Level</Text>
@@ -220,7 +242,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#1a73e8',
     padding: 20,
-    paddingTop: 50, // Added padding for status bar
+    paddingTop: 50,
     position: 'absolute',
     top: 0,
     left: 0,
@@ -254,8 +276,41 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flex: 1,
-    marginTop: 140, // Height of header + some margin
+    marginTop: 140,
   },
+  // New Dashboard Styles
+  dashboardSection: {
+    backgroundColor: '#ffffff',
+    margin: 10,
+    padding: 15,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  dashboardButtons: {
+    gap: 10,
+  },
+  dashboardButton: {
+    backgroundColor: '#f8f9fa',
+    padding: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  dashboardButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a73e8',
+    marginBottom: 5,
+  },
+  dashboardButtonSubtext: {
+    fontSize: 12,
+    color: '#666',
+  },
+  // Existing styles remain the same
   section: {
     backgroundColor: '#ffffff',
     margin: 10,
